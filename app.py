@@ -1,26 +1,30 @@
 import os
+from pathlib import Path
 import streamlit as st
-
-import rag_utility
-from rag_utility import *
-
-working_dir = os.path.dirname(os.path.abspath(__file__))
+from rag_utility import process_doc_to_chromadb, question_answer
 
 st.title("Rag Question-Answer App")
 
-upload_file = st.file_uploader("Upload a PDF file",type =["pdf"])
+UPLOAD_DIR = Path("/tmp/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+upload_file = st.file_uploader("Upload a PDF file", type=["pdf"])
 
 if upload_file is not None:
-    save_path = os.path.join(working_dir,upload_file.name)
-    with open(save_path,mode='wb') as f:
+    save_path = UPLOAD_DIR / upload_file.name
+    with open(save_path, "wb") as f:
         f.write(upload_file.getbuffer())
 
-    process_document = process_doc_to_chromadb(upload_file.name)
-    st.info("Document processed successfully")
+    process_doc_to_chromadb(str(save_path))   # ✅ pass full path
+    st.success("Document processed successfully ✅")
+    st.session_state["doc_ready"] = True
 
 user_question = st.text_area("Ask your question about the document")
 
 if st.button("Answer"):
-    answer = question_answer(user_question)
-    st.markdown("LLM response:")
-    st.markdown(answer)
+    if not st.session_state.get("doc_ready"):
+        st.error("Upload a document first.")
+    else:
+        answer = question_answer(user_question)
+        st.markdown("### LLM response:")
+        st.markdown(answer)
